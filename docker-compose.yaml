@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  jenkins:
+    build: .
+    container_name: jenkins-prod
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - ./casc_configs:/var/jenkins_home/casc_configs:ro   # JCasC mount
+      - jenkins_home:/var/jenkins_home                     # Jenkins persistent storage
+      - /var/run/docker.sock:/var/run/docker.sock          # Docker socket for pipeline usage
+      - /root/.docker:/root/.docker                        # Optional: Docker auth config
+      - /home/shaad/bookstore-api-server:/workspace/bookstore-api-server:cached  # Project workspace
+
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false   # Skip wizard
+      - CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs # JCasC path
+
+    restart: unless-stopped
+    networks:
+      - jenkins-net
+
+    # It marks the docker container unhealth on failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  jenkins_home:
+
+networks:
+  jenkins-net:
+    driver: bridge
